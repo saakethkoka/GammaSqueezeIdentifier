@@ -16,95 +16,107 @@ except FileNotFoundError:
             driver, config.api_key, config.redirect_uri, config.token_path)
 
 
-print(json.dumps(c.get_quote('AAPL').json(), indent=4))
-print(py_vollib.black_scholes.greeks.analytical.delta('p', 6.92, 15.00, 207/365, 0, 0.7007434498330484))
+# print(json.dumps(c.get_quote('AAPL').json(), indent=4))
+#print(py_vollib.black_scholes.greeks.analytical.delta('c', 16.41, 21.00, 4/365, 0, historicalVolatilityCalculator.get_historical_volitility('AMC')))
 
 
 
 
-def get_option_data(ticker, print_data = False):
+def get_option_data(ticker, print_data = False, stock_price=-1,):
     option = c.get_option_chain(ticker,
                                 contract_type=  client.Client.Options.ContractType.ALL
                                 )
     assert option.status_code == 200, option.raise_for_status()
-
+    if stock_price == -1:
+        stock_price = c.get_quote(ticker).json()[ticker]["closePrice"]
     #print(json.dumps(option.json(), indent=4))
     parser = option.json()
+
+    # Data to collect:
     call_hedge_pos = 0
     put_hedge_pos = 0
-    num_calls = 0
-    num_puts = 0
     call_OI = 0
     put_OI = 0
+    call_total_value = 0
+    put_total_value = 0
+    weighted_call_volume = 0
+    weighted_put_volume = 0
 
-    missed_puts = 0
-    missed_calls = 0
     historical_volatility = historicalVolatilityCalculator.get_historical_volitility(ticker)
     for key in parser['putExpDateMap']:
         value = parser['putExpDateMap'][key]
         for item in value:
-            if (parser['putExpDateMap'][key][item][0]["delta"] == "NaN" or parser['putExpDateMap'][key][item][0]["delta"] < -1):
-                #print('delta not found', parser['putExpDateMap'][key][ticker][0]["openInterest"], parser['putExpDateMap'][key][ticker][0]["description"])
-                missed_puts += parser['putExpDateMap'][key][item][0]["openInterest"]
-                continue
+            days_till_expiry = value[item][0]["daysToExpiration"]
+            strike_price = value[item][0]["strikePrice"]
+            delta = py_vollib.black_scholes.greeks.analytical.delta('p', stock_price, strike_price, days_till_expiry/365, 0, historical_volatility)
 
-            #print(value[ticker])
-            put_hedge_pos += parser['putExpDateMap'][key][item][0]["delta"] * parser['putExpDateMap'][key][item][0]["openInterest"]*100
-            put_OI += parser['putExpDateMap'][key][item][0]["openInterest"]
-            num_puts += 1
+            put_hedge_pos += delta * value[item][0]["openInterest"]*100
+            put_OI += value[item][0]["openInterest"]
+            put_total_value += value[item][0]["openInterest"] * value[item][0]["mark"]
+            weighted_put_volume += value[item][0]["totalVolume"] * delta
     for key in parser['callExpDateMap']:
         value = parser['callExpDateMap'][key]
         for item in value:
-            if(parser['callExpDateMap'][key][item][0]["delta"] == "NaN" or parser['putExpDateMap'][key][item][0]["delta"] < -1):
-                #print('delta not found', parser['callExpDateMap'][key][ticker][0]["openInterest"], parser['callExpDateMap'][key][ticker][0]["description"])
-                missed_calls += parser['callExpDateMap'][key][item][0]["openInterest"]
-                continue
-            call_hedge_pos += parser['callExpDateMap'][key][item][0]["delta"] * parser['callExpDateMap'][key][item][0]["openInterest"]*100
-            call_OI += parser['callExpDateMap'][key][item][0]["openInterest"]
-            num_calls += 1
+            days_till_expiry = value[item][0]["daysToExpiration"]
+            delta = py_vollib.black_scholes.greeks.analytical.delta('c', stock_price, strike_price, days_till_expiry/365, 0, historical_volatility)
+
+            call_hedge_pos += delta * value[item][0]["openInterest"]*100
+            call_OI += value[item][0]["openInterest"]
+            call_total_value += value[item][0]["openInterest"]*value[item][0]["mark"]
+            weighted_call_volume += value[item][0]["totalVolume"] * delta
+
     if print_data:
-        print('Missed Options:', missed_options)
         print("Shares needed to hedge calls:", call_hedge_pos, "Shares needed to hedge puts:", put_hedge_pos)
-        print("Number of calls", num_calls,"Number of puts:", num_puts)
         print("Total Needed to hedge:", call_hedge_pos + put_hedge_pos)
         print("Call OI:", call_OI, "Put OI:", put_OI)
         print("Shares out:", c.search_instruments(ticker, client.Client.Instrument.Projection.FUNDAMENTAL).json()[ticker]["fundamental"]["sharesOutstanding"])
         print("Num shares needed to hedge/ Shares out:", (call_hedge_pos + put_hedge_pos)*100 / c.search_instruments(ticker, client.Client.Instrument.Projection.FUNDAMENTAL).json()[ticker]["fundamental"]["sharesOutstanding"])
 
-    print(missed_calls, missed_puts)
-    return call_hedge_pos + put_hedge_pos
+    return_list = []
+    return_list.append(call_hedge_pos)
+    return_list.append(put_hedge_pos)
+    return_list.append(call_OI)
+    return_list.append(put_OI)
+    return_list.append(call_total_value)
+    return_list.append(put_total_value)
+    return_list.append(call_hedge_pos + put_hedge_pos) # Returning net hedge as # of shares, not % of Shares out.
+    return_list.append(weighted_call_volume)
+    return_list.append(weighted_put_volume)
+
+    return return_list
 
 
-def print_snp():
-    start_time = time.time()
+
+def get_ticker_data(ticker_list):
+    ticker_data_daily = {}
+    temp_list = []
+    for i in range(len(ticker_list)):
+        temp_list.append(ticker_list[i])
+        if len(temp_list) > 450 or i == len(ticker_list) - 1:
+            ticker_data_daily = {**ticker_data_daily, **(c.get_quotes(temp_list).json())}
+            temp_list.clear()
+    return ticker_data_daily
+
+
+def get_fundamental_data(ticker_list):
+    fundamental_data_list = {}
+    temp_list = []
+    for i in range(len(ticker_list)):
+        temp_list.append(ticker_list[i])
+        if len(temp_list) > 450 or i == len(ticker_list) - 1:
+            fundamental_data_list = {**fundamental_data_list, **(c.search_instruments(temp_list, client.Client.Instrument.Projection.FUNDAMENTAL).json())}
+            temp_list.clear()
+    return fundamental_data_list
+
+
+def update_database_daily():
     filecontent = ''
     with open('s&p500tickerts.txt') as f:
         filecontent = f.readlines()
 
-    with open('May242021.csv', mode='w') as csv_file:
-        writer = csv.writer(csv_file, delimiter=',')
-        filecontent = [x.strip() for x in filecontent]
-        max_val = 0
-        max_tick = 'aaa'
-        for ticker in filecontent:
-            try:
-                sharesOutstanding = c.search_instruments(ticker, client.Client.Instrument.Projection.FUNDAMENTAL).json()[ticker]["fundamental"]["sharesOutstanding"]
-            except:
-                continue
-            time.sleep(.50)
-            if(sharesOutstanding < 10000000):
-                continue
-            try:
-                val = (get_option_data(ticker) / sharesOutstanding) * 100
-            except:
-                continue
-            if(abs(val) > abs(max_val)):
-                max_val = val
-                max_tick = ticker
-                
-            writer.writerow([ticker, val])
-            print(ticker, val, "        ",max_tick, max_val, time.time()-start_time)
-            time.sleep(.50)
+    filecontent = [x.strip() for x in filecontent]
+    daily_ticker_data = get_ticker_data(filecontent)
+    fundamental_data = get_fundamental_data(filecontent)
 
-# ticker = 'IPOE'
-# print(get_option_data(ticker)*100 / c.search_instruments(ticker, client.Client.Instrument.Projection.FUNDAMENTAL).json()[ticker]["fundamental"]["sharesOutstanding"])
+
+update_database_daily()

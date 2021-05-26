@@ -10,7 +10,7 @@ def get_historical_volitility(ticker):
 
     # set date range for historical prices
     end_time = date.today()
-    start_time = end_time - timedelta(days=365)
+    start_time = end_time - timedelta(days=21)
 
     # reformat date range
     end = end_time.strftime('%Y-%m-%d')
@@ -38,6 +38,3 @@ def get_historical_volitility(ticker):
     return std
 
 
-
-
-print(get_historical_volitility('CLOV'))
