@@ -1,9 +1,6 @@
 import py_vollib.black_scholes.greeks.analytical
 from tda import auth, client
-import json
 import config
-import time
-import csv
 import historicalVolatilityCalculator
 
 total_options_missed = 0
@@ -16,8 +13,6 @@ except FileNotFoundError:
             driver, config.api_key, config.redirect_uri, config.token_path)
 
 
-# print(json.dumps(c.get_quote('AAPL').json(), indent=4))
-#print(py_vollib.black_scholes.greeks.analytical.delta('c', 16.41, 21.00, 4/365, 0, historicalVolatilityCalculator.get_historical_volitility('AMC')))
 
 
 
@@ -54,10 +49,12 @@ def get_option_data(ticker, print_data = False, stock_price=-1,):
             put_OI += value[item][0]["openInterest"]
             put_total_value += value[item][0]["openInterest"] * value[item][0]["mark"]
             weighted_put_volume += value[item][0]["totalVolume"] * delta
+
     for key in parser['callExpDateMap']:
         value = parser['callExpDateMap'][key]
         for item in value:
             days_till_expiry = value[item][0]["daysToExpiration"]
+            strike_price = value[item][0]["strikePrice"]
             delta = py_vollib.black_scholes.greeks.analytical.delta('c', stock_price, strike_price, days_till_expiry/365, 0, historical_volatility)
 
             call_hedge_pos += delta * value[item][0]["openInterest"]*100
@@ -82,6 +79,7 @@ def get_option_data(ticker, print_data = False, stock_price=-1,):
     return_list.append(call_hedge_pos + put_hedge_pos) # Returning net hedge as # of shares, not % of Shares out.
     return_list.append(weighted_call_volume)
     return_list.append(weighted_put_volume)
+    return_list.append(historical_volatility)
 
     return return_list
 
@@ -108,15 +106,4 @@ def get_fundamental_data(ticker_list):
             temp_list.clear()
     return fundamental_data_list
 
-
-def update_database_daily():
-    filecontent = ''
-    with open('s&p500tickerts.txt') as f:
-        filecontent = f.readlines()
-
-    filecontent = [x.strip() for x in filecontent]
-    daily_ticker_data = get_ticker_data(filecontent)
-    fundamental_data = get_fundamental_data(filecontent)
-
-
-update_database_daily()
+get_option_data('TSLA')
