@@ -3,6 +3,7 @@ import mysql.connector
 import TDA_stock_data_analyzer
 import datetime as dt
 import time
+import twilio_config
 
 mydb = mysql.connector.connect(
     host=mySQL_config.host,
@@ -18,7 +19,18 @@ def delete_date(date):
     cursor.execute(base_of_query + "'" + date + "'")
     mydb.commit()
 
+def send_message(message_text):
+    message = twilio_config.client.messages.create(
+        body= message_text,
+        from_='+14432340921',
+        to='+14697718557'
+    )
+    print(message.sid)
+
+
 def update_database_daily():
+    send_message('Starting option scraping.')
+    start_time = time.time()
     delete_date(str(dt.date.today()))
     base_of_query = "INSERT INTO daily_option_data (DATE_VALUE, TICKER, SHARES_HEDGE_CALLS, SHARES_HEDGE_PUTS, CALL_OI, PUT_OI, CALL_TOTAL_VALUE, PUT_TOTAL_VALUE, NET_HEDGE," \
                     " WEIGHTED_CALL_VOLUME, WEIGHTED_PUT_VOLUME, OPEN_PRICE, CLOSE_PRICE, HIGH_PRICE, LOW_PRICE, VOLUME, SHARES_OUT, HISTORICAL_VOLATILITY) "
@@ -57,5 +69,4 @@ def update_database_daily():
         cursor.execute(base_of_query + table_input)
         mydb.commit()
         time.sleep(.55)
-
-update_database_daily()
+    message = 'Done running. Time took: ' + str((time.time() - start_time)/60) + "minutes"
