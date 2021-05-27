@@ -2,8 +2,8 @@ from yahoofinancials import YahooFinancials
 from datetime import date, timedelta
 import pandas as pd
 import numpy as np
-import json
 
+# Code from https://tinytrader.io/how-to-calculate-historical-price-volatility-with-python/
 def get_historical_volitility(ticker):
     # set stock ticker symbol
     stock_symbol = ticker

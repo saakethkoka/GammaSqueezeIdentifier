@@ -35,7 +35,7 @@ def update_database_daily():
     base_of_query = "INSERT INTO daily_option_data (DATE_VALUE, TICKER, SHARES_HEDGE_CALLS, SHARES_HEDGE_PUTS, CALL_OI, PUT_OI, CALL_TOTAL_VALUE, PUT_TOTAL_VALUE, NET_HEDGE," \
                     " WEIGHTED_CALL_VOLUME, WEIGHTED_PUT_VOLUME, OPEN_PRICE, CLOSE_PRICE, HIGH_PRICE, LOW_PRICE, VOLUME, SHARES_OUT, HISTORICAL_VOLATILITY) "
     filecontent = ''
-    with open('s&p500tickerts.txt') as f:
+    with open('tickers.txt') as f:
         filecontent = f.readlines()
 
     ticker_list = [x.strip() for x in filecontent]

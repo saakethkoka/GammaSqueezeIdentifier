@@ -1,16 +1,16 @@
 import py_vollib.black_scholes.greeks.analytical
 from tda import auth, client
-import config
+import TDA_config
 import historicalVolatilityCalculator
 
 total_options_missed = 0
 try:
-    c = auth.client_from_token_file(config.token_path, config.api_key)
+    c = auth.client_from_token_file(TDA_config.token_path, TDA_config.api_key)
 except FileNotFoundError:
     from selenium import webdriver
     with webdriver.Chrome(executable_path= '/Users/saakethkoka/Documents/Stonks/Code/GammaSqueezeIdentifier/chromedriver') as driver:
         c = auth.client_from_login_flow(
-            driver, config.api_key, config.redirect_uri, config.token_path)
+            driver, TDA_config.api_key, TDA_config.redirect_uri, TDA_config.token_path)
 
 
 

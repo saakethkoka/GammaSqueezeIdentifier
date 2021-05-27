@@ -1,5 +1,6 @@
 /token.json
 /chromedriver
-/config.py
+/TDA_config.py
 /mySQL_config.py
 /twilio_config.py
+/TDA_config.py
