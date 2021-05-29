@@ -30,6 +30,8 @@ def send_message(message_text):
 
 def update_database_daily():
     send_message('Starting option scraping.')
+    print('Deleting today\'s entries in 60 seconds...')
+    time.sleep(60)
     start_time = time.time()
     delete_date(str(dt.date.today()))
     base_of_query = "INSERT INTO daily_option_data (DATE_VALUE, TICKER, SHARES_HEDGE_CALLS, SHARES_HEDGE_PUTS, CALL_OI, PUT_OI, CALL_TOTAL_VALUE, PUT_TOTAL_VALUE, NET_HEDGE," \

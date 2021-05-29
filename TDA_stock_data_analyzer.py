@@ -105,5 +105,3 @@ def get_fundamental_data(ticker_list):
             fundamental_data_list = {**fundamental_data_list, **(c.search_instruments(temp_list, client.Client.Instrument.Projection.FUNDAMENTAL).json())}
             temp_list.clear()
     return fundamental_data_list
-
-get_option_data('TSLA')
